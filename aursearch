@@ -125,7 +125,7 @@ function aur_pkgdl() {
 		echo -e "${c1}::${c3} Tarball found on AUR as ${c1}${_pkgfilename}${c3}. Downloading now...${c0}"
 		if [ ! -d "${_pkgdest}" ]; then mkdir -p "/tmp/aursearch"; fi
 		wget "${_pkgdlurl}" -O "${_pkgdest}/${_pkgfilename}" 2>/dev/null
-		if [ -f "${_pkgdest}" ]; then echo -e "${c1}::${c3} Tarball downloaded successfully to ${c2}${_pkgdest}${c3}.${c0}"
+		if [ -f "${_pkgdest}/${_pkgfilename}" ]; then echo -e "${c1}::${c3} Tarball downloaded successfully to ${c2}${_pkgdest}/${_pkgfilename}${c3}.${c0}"
 		else echo -e "${c5}::${c3} Problem downloading tarball to ${c2}${_pkgdest}/${_pkgfilename}${c3}.${c0}"; fi
 	fi
 }
