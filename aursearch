@@ -121,7 +121,7 @@ function aur_pkgdl() {
 		_pkgdl=$(json_awk "URLPath" "$_myresult" | sed -e 's/URLPath":"//' -e 's/"$//' -e 's/.*":".*//' -e 's/\\\//\//g')
 		_pkgfilename=$(echo ${_pkgdl} | sed "s/\/packages\/${_pkgname:0:2}\/${_pkgname}\///")
 		_pkgdlurl="http://aur.archlinux.org${_pkgdl}"
-		_pkgdest="./"
+		_pkgdest="."
 		echo -e "${c1}::${c3} Tarball found on AUR as ${c1}${_pkgfilename}${c3}. Downloading now...${c0}"
 		if [ ! -d "${_pkgdest}" ]; then mkdir -p "/tmp/aursearch"; fi
 		wget "${_pkgdlurl}" -O "${_pkgdest}/${_pkgfilename}" 2>/dev/null
