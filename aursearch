@@ -1,0 +1,141 @@
+#!/bin/bash
+#
+# AUR Searcher made by KittyKatt
+#
+##########################################
+
+# Constants
+c1="\e[1;33m"
+c2="\e[1;36m"
+c3="\e[1;37m"
+c4="\e[1;32m"
+c5="\e[1;31m"
+bold="\e[1m"
+underline="\e[4m"
+c0="\e[0m"
+
+progname=$(basename "$0")
+
+function displayHelp() {	
+	echo -e "  ${c1}>${c3} Usage:${c2} ${progname} [options] QUERY${c0}"
+	echo -e "     ${c1}>>>${c2}  -Sm${c3}           Search for packages owned by maintainer as search query.${c0}"
+	echo -e "     ${c1}>>>${c2}  -Si${c3}           Search for detailed information on particular package as search${c0}"
+	echo -e "${c3}		        query. Package name must be exact match.${c0}"
+	echo -e "     ${c1}>>>${c2}  -h | --help${c3}   Display this help menu.${c0}"
+	echo -e "     ${c1}>>>${c3}  With no arguments, search for package in AUR that matches search query.${c0}"
+}
+
+
+function json_awk() {
+	_mykey="$1"
+	_mysearch="$2"
+	echo "$_mysearch" 2>/dev/null | awk -F"\",\"" -v k="$_mykey" '{
+		    gsub(/{|}/,"")
+		    for(i=1;i<=NF;i++){
+		        if ( $i ~ k ){
+		            print $i
+		        }
+		    }
+		}' &2>/dev/null
+}
+
+
+function aur_isearch() {
+	_query="$1"
+	_myresult=$(curl -sL 'http://aur.archlinux.org/rpc.php?type=info&arg='$_query | sed 's/{"type":"search","results":\[{//')
+	if [[ '{"type":"error","results":"No result found"}' == "$_myresult" ]]; then echo -e "   ${c1}>>>${c3} No results for search.${c0}"
+	else
+		_pkgid=$(json_awk "ID" "$_myresult" | sed -e 's/ID"://' -e 's/^"//' -e 's/"$//' -e 's/results":""//' -e 's/Category".*//' -e 's/Location".*//')
+		_pkgname=$(json_awk "Name" "$_myresult" | sed -e 's/Name"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
+		_pkgver=$(json_awk "Version" "$_myresult" | sed -e 's/Version"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
+		_pkgdesc=$(json_awk "Description" "$_myresult" | sed -e 's/Description"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
+		_pkgurl=$(json_awk "URL" "$_myresult" | sed -e 's/URL"://' -e 's/^"//' -e 's/\\\//\//g' -e 's/"$//' -e 's/.*":".*//')
+		_pkglicense=$(json_awk "License" "$_myresult" | sed -e 's/License"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
+		_pkgstatus=$(json_awk "OutOfDate" "$_myresult" | sed -e 's/OutOfDate"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//' -e 's/0/No/' -e 's/1/Yes/')
+		_pkgvotes=$(json_awk "NumVotes" "$_myresult" | sed -e 's/NumVotes"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
+		echo -e "    ${c1}>>>${c2} ID: ${c3}${_pkgid}${c0}"
+		echo -e "    ${c1}>>>${c2} Name: ${c3}${_pkgname}${c0}"
+		echo -e "    ${c1}>>>${c2} Version: ${c3}${_pkgver}${c0}"
+		echo -e "    ${c1}>>>${c2} Description: ${c3}${_pkgdesc}${c0}"
+		echo -e "    ${c1}>>>${c2} URL:${c3} ${_pkgurl}${c0}"
+		echo -e "    ${c1}>>>${c2} License: ${c3}${_pkglicense}${c0}"
+		echo -e "    ${c1}>>>${c2} Votes: ${c3}${_pkgvotes}${c0}"
+		echo -e "    ${c1}>>>${c2} Out of Date? ${c3}${_pkgstatus}${c0}"
+	fi
+}
+
+function aur_msearch() {
+	_query="$1"
+	_myresult=$(curl -sL 'http://aur.archlinux.org/rpc.php?type=msearch&arg='$_query | sed 's/{"type":"search","results":\[{//')
+	if [[ '{"type":"error","results":"No results found"}' == "$_myresult" ]]; then echo -e "   ${c1}>>>${c3} No results for search.${c0}"
+	else
+		OLD_IFS="$IFS"
+		_pkgindex="1"
+		arr=$(echo "$_myresult" | sed -e 's/},{/\n/g')
+		IFS=$'\n'
+		for i in $arr; do
+				_pkgname=$(json_awk "Name" "$i" | sed -e 's/Name"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
+				_pkgver=$(json_awk "Version" "$i" | sed -e 's/Version"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//' -e 's/"$//' -e 's/^.*":".*//')
+				_pkgdesc=$(json_awk "Description" "$i" | sed -e 's/Description"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
+				_pkgodated=$(json_awk "OutOfDate" "$_myresult" | sed -e 's/OutOfDate"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
+				if [[ "$_pkgodated" == "1" ]]; then _pkgstatus="${c5}  (Out of Date!)"; fi
+				echo -e "${c1}${_pkgindex}${c2} AUR/${c3}${_pkgname} ${c4}${_pkgver}${_pkgstatus}\n${c0}    $_pkgdesc"
+				unset _pkgstatus
+				((_pkgindex++))
+		done
+		IFS="$OLD_IFS"
+	fi
+}
+
+function aur_psearch() {
+	_query="$1"
+	_myresult=$(curl -sL 'http://aur.archlinux.org/rpc.php?type=search&arg='$_query | sed 's/{"type":"search","results":\[{//')
+	if [[ '{"type":"error","results":"No results found"}' == "$_myresult" ]]; then echo -e "   ${c1}>>>${c3} No results for search.${c0}"
+	else
+		OLD_IFS="$IFS"
+		_pkgindex="1"
+		arr=$(echo "$_myresult" | sed 's/},{/\n/g')
+		IFS=$'\n'
+		for i in $arr; do
+				_pkgname=$(json_awk "Name" "$i" | sed -e 's/Name"://' -e 's/^"//' -e 's/"$//')
+				_pkgver=$(json_awk "Version" "$i" | sed -e 's/Version"://' -e 's/^"//' -e 's/"$//' -e 's/^.*":".*//')
+				_pkgdesc=$(json_awk "Description" "$i" | sed -e 's/Description"://' -e 's/^"//' -e 's/"$//')
+				_pkgodated=$(json_awk "OutOfDate" "$i" | sed -e 's/OutOfDate"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//' -e 's/"]//')
+				if [[ "$_pkgodated" == "1" ]]; then _pkgstatus="${c5}  (Out of Date!)"; fi
+				echo -e "${c1}${_pkgindex}${c2} AUR/${c3}${_pkgname} ${c4}${_pkgver}${_pkgstatus}\n${c0}    $_pkgdesc"
+				unset _pkgstatus
+				((_pkgindex++))
+		done
+		IFS="$OLD_IFS"
+	fi
+}
+
+if [[ `echo "$1" | cut -c1` == "-" ]]; then
+	#argv=$(getopt -a -o m:i:h -l info:msearch:help -n "$progname" -- "$@")
+	#test $? != 0 && exit 1
+	#eval set -- "$argv"
+	#while [ "$1" ]; do
+	#	case "$1" in
+	#	  -m | --msearch )
+	#		msearch="yes"; echo -e "${c1}::${c3} Searching for packages owned by '${c2}${2}${c3}'...${c0}"; aur_msearch "$2"; exit;;
+	#	  -i | --info )
+	#		isearch="yes"; echo -e "${c1}::${c3} Displaying info on package '${c2}${2}${c3}'...${c0}"; aur_isearch "$2"; exit;;
+	#	  -h | --help )
+	#		displayHelp; exit ;;
+	#	  * )
+	#		echo -e "${c1}::${c3} Searching for packages containing '${c2}${1}${c3}'...${c0}"; aur_psearch "$1"; exit;;
+	#	esac
+	#done
+	while [ "$1" ]; do 
+		case "$1" in
+			-Sm ) msearch="yes"; echo -e "${c1}::${c3} Searching for packages owned by '${c2}${2}${c3}'...${c0}"; aur_msearch "$2"; exit ;;
+			-Si ) isearch="yes"; echo -e "${c1}::${c3} Displaying info on package '${c2}${2}${c3}'...${c0}"; aur_isearch "$2"; exit ;;
+			-h | --help ) displayHelp; exit ;;
+			* ) echo -e "${c1}::${c3} Searching for packages containing '${c2}${1}${c3}'...${c0}"; aur_psearch "$1"; exit ;;
+		esac
+	done
+else
+	echo -e "${c1}::${c3} Searching for packages containing '${c2}${1}${c3}'...${c0}"
+	aur_psearch "$1"
+	exit
+fi
