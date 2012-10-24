@@ -123,12 +123,29 @@ function aur_pkgdl() {
 		_pkgdl=$(json_awk "URLPath" "$_myresult" | sed -e 's/URLPath":"//' -e 's/"$//' -e 's/.*":".*//' -e 's/\\\//\//g')
 		_pkgfilename=$(echo ${_pkgdl} | sed "s/\/packages\/${_pkgname:0:2}\/${_pkgname}\///")
 		_pkgdlurl="http://aur.archlinux.org${_pkgdl}"
-		_pkgdest="."
+		if [ "$2" ]; then
+			if [ -d "$2" ]; then
+				_pkgdest="$2"
+			else
+				echo -e "${c5}::${c3} Problem downloading tarball to ${c2}${_pkgdest}/${_pkgfilename}${c3}.${c0}"
+			fi
+		else
+			_pkgdest=$(pwd)
+		fi
 		echo -e "${c1}::${c3} Tarball found on AUR as ${c1}${_pkgfilename}${c3}. Downloading now...${c0}"
-		if [ ! -d "${_pkgdest}" ]; then mkdir -p "/tmp/aursearch"; fi
-		wget "${_pkgdlurl}" -O "${_pkgdest}/${_pkgfilename}" 2>/dev/null
-		if [ -f "${_pkgdest}/${_pkgfilename}" ]; then echo -e "${c1}::${c3} Tarball downloaded successfully to ${c2}${_pkgdest}/${_pkgfilename}${c3}.${c0}"
-		else echo -e "${c5}::${c3} Problem downloading tarball to ${c2}${_pkgdest}/${_pkgfilename}${c3}.${c0}"; fi
+		if [ ! -d /tmp/aursearch ]; then mkdir -p "/tmp/aursearch"; fi
+		wget "${_pkgdlurl}" -O "/tmp/aursearch/${_pkgfilename}" 2>/dev/null
+		if [ -f "/tmp/aursearch/${_pkgfilename}" ]; then 
+			echo -e "${c1}::${c3} Tarball downloaded successfully to ${c2}/tmp/aursearch/${_pkgfilename}${c3}. Extracting...${c0}"
+			tar xzf "/tmp/aursearch/${_pkgfilename}" -C "${_pkgdest}"
+			if [ -d "${_pkgdest}/${_pkgname}"  ]; then
+				echo -e "${c1}::${c3} Package tarball extracted successfully to ${c2}${_pkgdest}/${_pkgname}/${c3}.${c0}"
+			else
+				echo -e "${c5}::${c3} Problem extracting tarball to ${c2}${_pkgdest}/${_pkgfilename}${c3}.${c0}"
+			fi
+		else
+			echo -e "${c5}::${c3} Problem downloading tarball to ${c2}/tmp/aursearch/${_pkgfilename}${c3}.${c0}"
+		fi
 	fi
 }
 
@@ -153,6 +170,7 @@ if [[ `echo "$1" | cut -c1` == "-" ]]; then
 			-Sm ) msearch="yes"; echo -e "${c1}::${c3} Searching for packages owned by '${c2}${2}${c3}'...${c0}"; aur_msearch "$2"; exit ;;
 			-Si ) isearch="yes"; echo -e "${c1}::${c3} Displaying info on package '${c2}${2}${c3}'...${c0}"; aur_isearch "$2"; exit ;;
 			-D ) echo -e "${c1}::${c3} Searching for package '${c2}${2}${c3}'...${c0}"; aur_pkgdl "$2"; exit ;;
+			-Dp)  echo -e "${c1}::${c3} Searching for package '${c2}${2}${c3}'...${c0}"; aur_pkgdl "$3" "$2"; exit ;;
 			-h | --help ) displayHelp; exit ;;
 			* ) echo -e "${c1}::${c3} Searching for packages containing '${c2}${1}${c3}'...${c0}"; aur_psearch "$1"; exit ;;
 		esac
