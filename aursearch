@@ -21,6 +21,8 @@ function displayHelp() {
 	echo -e "     ${c1}>>>${c2}  -Sm${c3}           Search for packages owned by maintainer as search query.${c0}"
 	echo -e "     ${c1}>>>${c2}  -Si${c3}           Search for detailed information on particular package as search${c0}"
 	echo -e "${c3}		        query. Package name must be exact match.${c0}"
+	echo -e "     ${c1}>>>${c2}  -Si${c3}           Download package tarball (includes PKGBUILD and any other files${c0}"
+	echo -e "${c3}		        hosted on the AUR.${c0}"
 	echo -e "     ${c1}>>>${c2}  -h | --help${c3}   Display this help menu.${c0}"
 	echo -e "     ${c1}>>>${c3}  With no arguments, search for package in AUR that matches search query.${c0}"
 }
