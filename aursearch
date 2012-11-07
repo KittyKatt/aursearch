@@ -44,18 +44,18 @@ function json_awk() {
 
 function aur_isearch() {
 	_query="$1"
-	_myresult=$(curl -sL 'http://aur.archlinux.org/rpc.php?type=info&arg='$_query)
+	_myresult=$(curl -sL 'https://aur.archlinux.org/rpc.php?type=info&arg='$_query)
 	if [[ '{"type":"error","results":"No result found"}' == "$_myresult" ]]; then echo -e "   ${c5}>>>${c3} No results for search.${c0}"
 	else
-		_pkgid=$(json_awk "ID" "$_myresult" | sed -e 's/ID"://' -e 's/^"//' -e 's/"$//' -e 's/results":""//' -e 's/Category".*//' -e 's/Location".*//')
-		_pkgname=$(json_awk "Name" "$_myresult" | sed -e 's/Name"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
-		_pkgmaint=$(json_awk "Maintainer" "$_myresult" | sed -e 's/Maintainer":"//' -e 's/results":"//')
+		_pkgid=$(json_awk "ID" "$_myresult" | sed -e 's/ID"://' -e 's/^"//' -e 's/"$//' -e 's/results":""//' -e 's/Category".*//' -e 's/Location".*//' -e 's/,"Name":".*//' -e 's/Category.*//' | head -n1)
+		_pkgname=$(json_awk "Name" "$_myresult" | sed -e 's/Name":"//' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//' -e 's/ID":.*,"//' -e 's/Maintainer":null,"//')
+		_pkgmaint=$(json_awk "Maintainer" "$_myresult" | sed -e 's/Maintainer":"//' -e 's/results":"//' -e 's/resultcount":.*,"//')
 		_pkgver=$(json_awk "Version" "$_myresult" | sed -e 's/Version"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
-		_pkgdesc=$(json_awk "Description" "$_myresult" | sed -e 's/Description"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
+		_pkgdesc=$(json_awk "Description" "$_myresult" | sed -e 's/Description":"//' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//' -e 's/CategoryID":.*,"//')
 		_pkgurl=$(json_awk "URL" "$_myresult" | sed -e 's/URL"://' -e 's/^"//' -e 's/\\\//\//g' -e 's/"$//' -e 's/.*":".*//')
 		_pkglicense=$(json_awk "License" "$_myresult" | sed -e 's/License"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
-		_pkgstatus=$(json_awk "OutOfDate" "$_myresult" | sed -e 's/OutOfDate"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//' -e 's/0/No/' -e 's/1/Yes/')
-		_pkgvotes=$(json_awk "NumVotes" "$_myresult" | sed -e 's/NumVotes"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
+		_pkgstatus=$(json_awk "OutOfDate" "$_myresult" | sed -e 's/OutOfDate"://' -e 's/^"//' -e 's/"$//' -e 's/^NumVotes":[0-9]*,"//' -e 's/,"FirstSubmitted":.*//' -e 's/0/No/' -e 's/1/Yes/')
+		_pkgvotes=$(json_awk "NumVotes" "$_myresult" | sed -e 's/NumVotes"://' -e 's/^"//' -e 's/"$//' -e 's/,".*//')
 		echo -e "    ${c1}>>>${c2} ID: ${c3}${_pkgid}${c0}"
 		echo -e "    ${c1}>>>${c2} Name: ${c3}${_pkgname}${c0}"
 		echo -e "    ${c1}>>>${c2} Maintainer: ${c3}${_pkgmaint}${c0}"
@@ -70,7 +70,7 @@ function aur_isearch() {
 
 function aur_msearch() {
 	_query="$1"
-	_myresult=$(curl -sL 'http://aur.archlinux.org/rpc.php?type=msearch&arg='$_query)
+	_myresult=$(curl -sL 'https://aur.archlinux.org/rpc.php?type=msearch&arg='$_query)
 	if [[ '{"type":"error","results":"No results found"}' == "$_myresult" ]]; then echo -e "   ${c5}>>>${c3} No results for search.${c0}"
 	else
 		OLD_IFS="$IFS"
@@ -78,10 +78,10 @@ function aur_msearch() {
 		arr=$(echo "$_myresult" | sed -e 's/},{/\n/g')
 		IFS=$'\n'
 		for i in $arr; do
-				_pkgname=$(json_awk "Name" "$i" | sed -e 's/Name"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
-				_pkgver=$(json_awk "Version" "$i" | sed -e 's/Version"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//' -e 's/"$//' -e 's/^.*":".*//')
-				_pkgdesc=$(json_awk "Description" "$i" | sed -e 's/Description"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
-				_pkgodated=$(json_awk "OutOfDate" "$_myresult" | sed -e 's/OutOfDate"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
+				_pkgname=$(json_awk "Name" "$i" | sed -e 's/Name":"//' -e 's/^"//' -e 's/"$//' -e 's/ID":.*,"//' -e 's/Maintainer":null,"//')
+				_pkgver=$(json_awk "Version" "$i" | sed -e 's/Version"://' -e 's/^"//' -e 's/"$//' -e 's/^.*":".*//')
+				_pkgdesc=$(json_awk "Description" "$i" | sed -e 's/Description":"//' -e 's/^"//' -e 's/"$//' -e 's/CategoryID":.*,"//')
+				_pkgodated=$(json_awk "OutOfDate" "$i" | sed -e 's/OutOfDate"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//' -e 's/"]//')
 				if [[ "$_pkgodated" == "1" ]]; then _pkgstatus="${c5}  (Out of Date!)"; fi
 				echo -e "${c1}${_pkgindex}${c2} AUR/${c3}${_pkgname} ${c4}${_pkgver}${_pkgstatus}\n${c0}    $_pkgdesc"
 				unset _pkgstatus
@@ -93,7 +93,7 @@ function aur_msearch() {
 
 function aur_psearch() {
 	_query="$1"
-	_myresult=$(curl -sL 'http://aur.archlinux.org/rpc.php?type=search&arg='$_query)
+	_myresult=$(curl -sL 'https://aur.archlinux.org/rpc.php?type=search&arg='$_query)
 	if [[ '{"type":"error","results":"No results found"}' == "$_myresult" ]]; then echo -e "   ${c5}>>>${c3} No results for search.${c0}"
 	else
 		OLD_IFS="$IFS"
@@ -101,9 +101,9 @@ function aur_psearch() {
 		arr=$(echo "$_myresult" | sed 's/},{/\n/g')
 		IFS=$'\n'
 		for i in $arr; do
-				_pkgname=$(json_awk "Name" "$i" | sed -e 's/Name"://' -e 's/^"//' -e 's/"$//')
+				_pkgname=$(json_awk "Name" "$i" | sed -e 's/Name":"//' -e 's/^"//' -e 's/"$//' -e 's/ID":.*,"//' -e 's/Maintainer":null,"//')
 				_pkgver=$(json_awk "Version" "$i" | sed -e 's/Version"://' -e 's/^"//' -e 's/"$//' -e 's/^.*":".*//')
-				_pkgdesc=$(json_awk "Description" "$i" | sed -e 's/Description"://' -e 's/^"//' -e 's/"$//')
+				_pkgdesc=$(json_awk "Description" "$i" | sed -e 's/Description":"//' -e 's/^"//' -e 's/"$//' -e 's/CategoryID":.*,"//')
 				_pkgodated=$(json_awk "OutOfDate" "$i" | sed -e 's/OutOfDate"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//' -e 's/"]//')
 				if [[ "$_pkgodated" == "1" ]]; then _pkgstatus="${c5}  (Out of Date!)"; fi
 				echo -e "${c1}${_pkgindex}${c2} AUR/${c3}${_pkgname} ${c4}${_pkgver}${_pkgstatus}\n${c0}    $_pkgdesc"
@@ -116,13 +116,13 @@ function aur_psearch() {
 
 function aur_pkgdl() {
 	_query="$1"
-	_myresult=$(curl -sL 'http://aur.archlinux.org/rpc.php?type=info&arg='$_query)
+	_myresult=$(curl -sL 'https://aur.archlinux.org/rpc.php?type=info&arg='$_query)
 	if [[ '{"type":"error","results":"No results found"}' == "$_myresult" ]]; then echo -e "   ${c5}>>>${c3} Package not found.${c0}"
 	else
 		_pkgname=$(json_awk "Name" "$_myresult" | sed -e 's/Name"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
 		_pkgdl=$(json_awk "URLPath" "$_myresult" | sed -e 's/URLPath":"//' -e 's/"$//' -e 's/.*":".*//' -e 's/\\\//\//g')
 		_pkgfilename=$(echo ${_pkgdl} | sed "s/\/packages\/${_pkgname:0:2}\/${_pkgname}\///")
-		_pkgdlurl="http://aur.archlinux.org${_pkgdl}"
+		_pkgdlurl="https://aur.archlinux.org${_pkgdl}"
 		if [ "$2" ]; then
 			if [ -d "$2" ]; then
 				_pkgdest="$2"
