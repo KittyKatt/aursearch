@@ -119,8 +119,8 @@ function aur_pkgdl() {
 	_myresult=$(curl -sL 'https://aur.archlinux.org/rpc.php?type=info&arg='$_query)
 	if [[ '{"type":"error","results":"No results found"}' == "$_myresult" ]]; then echo -e "   ${c5}>>>${c3} Package not found.${c0}"
 	else
-		_pkgname=$(json_awk "Name" "$_myresult" | sed -e 's/Name"://' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//')
-		_pkgdl=$(json_awk "URLPath" "$_myresult" | sed -e 's/URLPath":"//' -e 's/"$//' -e 's/.*":".*//' -e 's/\\\//\//g')
+		_pkgname=$(json_awk "Name" "$_myresult" | sed -e 's/Name":"//' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//' -e 's/ID":.*,"//')
+		_pkgdl=$(json_awk "URLPath" "$_myresult" | sed -e 's/URLPath":"//' -e 's/"$//' -e 's/.*":".*//' -e 's/\\\//\//g' -e 's/NumVotes":.*,"\/packages/\/packages/')
 		_pkgfilename=$(echo ${_pkgdl} | sed "s/\/packages\/${_pkgname:0:2}\/${_pkgname}\///")
 		_pkgdlurl="https://aur.archlinux.org${_pkgdl}"
 		if [ "$2" ]; then
@@ -170,7 +170,7 @@ if [[ `echo "$1" | cut -c1` == "-" ]]; then
 			-Sm ) msearch="yes"; echo -e "${c1}::${c3} Searching for packages owned by '${c2}${2}${c3}'...${c0}"; aur_msearch "$2"; exit ;;
 			-Si ) isearch="yes"; echo -e "${c1}::${c3} Displaying info on package '${c2}${2}${c3}'...${c0}"; aur_isearch "$2"; exit ;;
 			-D ) echo -e "${c1}::${c3} Searching for package '${c2}${2}${c3}'...${c0}"; aur_pkgdl "$2"; exit ;;
-			-Dp)  echo -e "${c1}::${c3} Searching for package '${c2}${2}${c3}'...${c0}"; aur_pkgdl "$3" "$2"; exit ;;
+			-Dp)  echo -e "${c1}::${c3} Searching for package '${c2}${3}${c3}'...${c0}"; aur_pkgdl "$3" "$2"; exit ;;
 			-h | --help ) displayHelp; exit ;;
 			* ) echo -e "${c1}::${c3} Searching for packages containing '${c2}${1}${c3}'...${c0}"; aur_psearch "$1"; exit ;;
 		esac
