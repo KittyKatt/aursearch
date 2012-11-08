@@ -45,7 +45,7 @@ function json_awk() {
 function aur_isearch() {
 	_query="$1"
 	_myresult=$(curl -sL 'https://aur.archlinux.org/rpc.php?type=info&arg='$_query)
-	if [[ '{"type":"error","results":"No result found"}' == "$_myresult" ]]; then echo -e "   ${c5}>>>${c3} No results for search.${c0}"
+	if [[ '{"type":"info","resultcount":0,"results":[]}' == "$_myresult" ]]; then echo -e "   ${c5}>>>${c3} No results for search.${c0}"
 	else
 		_pkgid=$(json_awk "ID" "$_myresult" | sed -e 's/ID"://' -e 's/^"//' -e 's/"$//' -e 's/results":""//' -e 's/Category".*//' -e 's/Location".*//' -e 's/,"Name":".*//' -e 's/Category.*//' | head -n1)
 		_pkgname=$(json_awk "Name" "$_myresult" | sed -e 's/Name":"//' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//' -e 's/ID":.*,"//' -e 's/Maintainer":null,"//')
