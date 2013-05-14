@@ -96,6 +96,7 @@ function aur_psearch() {
 	_myresult=$(curl -sL 'https://aur.archlinux.org/rpc.php?type=search&arg='$_query)
 	if [[ '{"type":"error","results":"No results found"}' == "$_myresult" ]]; then echo -e "   ${c5}>>>${c3} No results for search.${c0}"
 	else
+		_myresult=$(echo "$_myresult" | sed 's/.*"type":"search".*"resultcount".*"results":\[//g')
 		OLD_IFS="$IFS"
 		_pkgindex="1"
 		arr=$(echo "$_myresult" | sed 's/},{/\n/g')
