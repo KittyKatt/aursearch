@@ -25,6 +25,7 @@ function displayHelp() {
 	echo -e "${c3}		        hosted on the AUR.${c0}"
 	echo -e "     ${c1}>>>${c2}  -h | --help${c3}   Display this help menu.${c0}"
 	echo -e "     ${c1}>>>${c3}  With no arguments, search for package in AUR that matches search query.${c0}"
+	exit 0
 }
 
 
@@ -65,6 +66,7 @@ function aur_isearch() {
 		echo -e "    ${c1}>>>${c2} License: ${c3}${_pkglicense}${c0}"
 		echo -e "    ${c1}>>>${c2} Votes: ${c3}${_pkgvotes}${c0}"
 		echo -e "    ${c1}>>>${c2} Out of Date? ${c3}${_pkgstatus}${c0}"
+		exit 0
 	fi
 }
 
@@ -88,6 +90,7 @@ function aur_msearch() {
 				((_pkgindex++))
 		done
 		IFS="$OLD_IFS"
+		exit 0
 	fi
 }
 
@@ -112,6 +115,7 @@ function aur_psearch() {
 				((_pkgindex++))
 		done
 		IFS="$OLD_IFS"
+		exit 0
 	fi
 }
 
@@ -120,15 +124,16 @@ function aur_pkgdl() {
 	_myresult=$(curl -sL 'https://aur.archlinux.org/rpc.php?type=info&arg='$_query)
 	if [[ '{"type":"error","results":"No results found"}' == "$_myresult" ]]; then echo -e "   ${c5}>>>${c3} Package not found.${c0}"
 	else
-		_pkgname=$(json_awk "Name" "$_myresult" | sed -e 's/Name":"//' -e 's/^"//' -e 's/"$//' -e 's/.*":".*//' -e 's/ID":.*,"//')
+		_pkgname=$(json_awk "Name" "$_myresult" | awk -F'"' '{print $NF}')
 		_pkgdl=$(json_awk "URLPath" "$_myresult" | sed -e 's/URLPath":"//' -e 's/"$//' -e 's/.*":".*//' -e 's/\\\//\//g' -e 's/NumVotes":.*,"\/packages/\/packages/')
-		_pkgfilename=$(echo ${_pkgdl} | sed "s/\/packages\/${_pkgname:0:2}\/${_pkgname}\///")
+		_pkgfilename=$(echo ${_pkgdl} | awk -F'/' '{print $NF}')
 		_pkgdlurl="https://aur.archlinux.org${_pkgdl}"
-		if [ "$2" ]; then
-			if [ -d "$2" ]; then
-				_pkgdest="$2"
+		if [ "${_pkgdest}" ]; then
+			if [ -d "${_pkgdest}" ]; then
+				:
 			else
 				echo -e "${c5}::${c3} Problem downloading tarball to ${c2}${_pkgdest}/${_pkgfilename}${c3}.${c0}"
+				exit 1
 			fi
 		else
 			_pkgdest=$(pwd)
@@ -141,11 +146,14 @@ function aur_pkgdl() {
 			tar xzf "/tmp/aursearch/${_pkgfilename}" -C "${_pkgdest}"
 			if [ -d "${_pkgdest}/${_pkgname}"  ]; then
 				echo -e "${c1}::${c3} Package tarball extracted successfully to ${c2}${_pkgdest}/${_pkgname}/${c3}.${c0}"
+				exit 0
 			else
 				echo -e "${c5}::${c3} Problem extracting tarball to ${c2}${_pkgdest}/${_pkgfilename}${c3}.${c0}"
+				exit 1
 			fi
 		else
 			echo -e "${c5}::${c3} Problem downloading tarball to ${c2}/tmp/aursearch/${_pkgfilename}${c3}.${c0}"
+			exit 1
 		fi
 	fi
 }
@@ -166,16 +174,29 @@ if [[ `echo "$1" | cut -c1` == "-" ]]; then
 	#		echo -e "${c1}::${c3} Searching for packages containing '${c2}${1}${c3}'...${c0}"; aur_psearch "$1"; exit;;
 	#	esac
 	#done
-	if [ "$1" ]; then
-		case "$1" in
-			-Sm ) msearch="yes"; echo -e "${c1}::${c3} Searching for packages owned by '${c2}${2}${c3}'...${c0}"; aur_msearch "$2"; exit ;;
-			-Si ) isearch="yes"; echo -e "${c1}::${c3} Displaying info on package '${c2}${2}${c3}'...${c0}"; aur_isearch "$2"; exit ;;
-			-D ) echo -e "${c1}::${c3} Searching for package '${c2}${2}${c3}'...${c0}"; aur_pkgdl "$2"; exit ;;
-			-Dp)  echo -e "${c1}::${c3} Searching for package '${c2}${3}${c3}'...${c0}"; aur_pkgdl "$3" "$2"; exit ;;
-			-h | --help ) displayHelp; exit ;;
-			* ) echo -e "${c1}::${c3} Searching for packages containing '${c2}${1}${c3}'...${c0}"; aur_psearch "$1"; exit ;;
+	#if [ "$1" ]; then
+	#	case "$1" in
+	#		"-M") msearch="yes"; echo -e "${c1}::${c3} Searching for packages owned by '${c2}${2}${c3}'...${c0}"; aur_msearch "$2"; exit ;;
+	#		"-I") isearch="yes"; echo -e "${c1}::${c3} Displaying info on package '${c2}${2}${c3}'...${c0}"; aur_isearch "$2"; exit ;;
+	#		"-D") echo -e "${c1}::${c3} Searching for package '${c2}${2}${c3}'...${c0}"; aur_pkgdl "${OPTARG}"; echo "rawr"; exit ;;
+	#		"-h"|"--help") displayHelp; exit ;;
+	#		* ) echo -e "${c1}::${c3} Searching for packages containing '${c2}${1}${c3}'...${c0}"; aur_psearch "$1"; exit ;;
+	#	esac
+	#fi
+
+	case $1 in
+		--help) displayHelp;;
+	esac
+
+	while getopts ":M:I:B:D:h" flags; do
+		case $flags in
+			"M") printf "${c1}::${c3} Searching for packages owned by '${c2}${OPTARG}${c3}'...${c0}\n"; aur_msearch "${OPTARG}";;
+			"I") printf "${c1}::${c3} Displaying info on package '${c2}${OPTARG}${c3}'...${c0}\n"; aur_isearch "${OPTARG}";;
+			"B") _pkgdest="${OPTARG}";;
+			"D") printf "${c1}::${c3} Searching for package '${c2}${OPTARG}${c3}'...${c0}\n"; aur_pkgdl "${OPTARG}";;
+			"h") displayHelp;;
 		esac
-	fi
+	done
 else
 	if [ "$1" ]; then
 		echo -e "${c1}::${c3} Searching for packages containing '${c2}${1}${c3}'...${c0}"
